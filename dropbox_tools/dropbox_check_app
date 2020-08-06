@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+source "$DIR/init.sh"
+
+check() {
+    local TEST="$RANDOM"
+    local RESP="$(
+        curl -X POST https://api.dropboxapi.com/2/check/app \
+        --basic --user "$APP_USER:$APP_PASSWORD" \
+        --header "Content-Type: application/json" \
+        --data "{\"query\": \"$TEST\"}" 2>/dev/null
+    )" || return $?
+
+    if echo "$RESP" | grep -q "$TEST"; then
+        return 0
+    else
+        echo "Error: cannot check app" >&2
+        echo "$RESP" >&2
+        echo "" >&2
+        return 1
+    fi
+
+}
+
+check "$@" && echo "success"
+

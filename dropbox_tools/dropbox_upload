@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+source "$DIR/init.sh"
+
+function escape() {
+    echo "$1" | sed 's/\\/\\\\/g;s/"/\\"/g'
+}
+
+dropbox_upload() {
+    local FILE="$1"
+    local REMOTE_PATH="${2:-$(basename "$FILE")}"
+    local params='{"path": "'"$( escape "$REMOTE_PATH" )"'","mode": "add","autorename": true,"mute": false,"strict_conflict": false}'
+
+    echo "upload $FILE as $REMOTE_PATH" >&2
+    if [ -z "$TOKEN" ]; then
+        echo "Error: no TOKEN provided" >&2
+        return 2
+    fi
+    local RESP="$(
+        curl -X POST https://content.dropboxapi.com/2/files/upload \
+        --header "Authorization: Bearer $TOKEN" \
+        --header "Dropbox-API-Arg: $params" \
+        --header "Content-Type: application/octet-stream" \
+        --data-binary @"$FILE" 2>/dev/null \
+    )" || return $?
+
+    if echo "$RESP" | grep -q '"content_hash"'; then
+        return 0 
+    else
+        echo "Error: cannot parse response" >&2
+        echo "$RESP" >&2
+        echo "" >&2
+        return 1
+    fi
+}
+
+dropbox_upload "$@" && echo "success"
+
+
